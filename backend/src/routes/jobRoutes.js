@@ -1,9 +1,21 @@
-
 const express = require("express");
+const multer = require("multer");
 const pool = require("../db");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
+
+// Multer setup for company logo upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+const upload = multer({ storage });
 
 // Get all jobs
 router.get("/", async (req, res) => {
@@ -18,15 +30,17 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Post a new job
-router.post("/", authMiddleware, async (req, res) => {
+// Post a new job with company logo
+router.post("/", authMiddleware, upload.single("company_logo"), async (req, res) => {
   try {
     const { title, company, location, salary, description } = req.body;
 
+    const companyLogo = req.file ? `/uploads/${req.file.filename}` : null;
+
     const result = await pool.query(
       `INSERT INTO jobs
-      (title, company, location, salary, description, created_by)
-      VALUES($1,$2,$3,$4,$5,$6)
+      (title, company, location, salary, description, created_by, company_logo)
+      VALUES($1,$2,$3,$4,$5,$6,$7)
       RETURNING *`,
       [
         title,
@@ -35,6 +49,7 @@ router.post("/", authMiddleware, async (req, res) => {
         salary,
         description,
         req.user.id,
+        companyLogo,
       ]
     );
 
@@ -43,7 +58,6 @@ router.post("/", authMiddleware, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
-
 
 // Get jobs posted by logged-in recruiter
 router.get("/my/jobs", authMiddleware, async (req, res) => {
@@ -74,26 +88,18 @@ router.post("/:id/apply", authMiddleware, async (req, res) => {
       message: "Applied successfully",
       application: result.rows[0],
     });
-  } 
-  
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(400).json({
+        message: "You have already applied for this job.",
+      });
+    }
 
-  catch (err) {
-  console.log("ERROR CODE:", err.code);
-  console.log(err);
-
-  if (err.code === "23505") {
-    return res.status(400).json({
-      message: "You have already applied for this job.",
+    res.status(500).json({
+      message: err.message,
     });
   }
-
-  res.status(500).json({
-    message: err.message,
-  });
-}
-
 });
-
 
 // Delete a job
 router.delete("/:id", authMiddleware, async (req, res) => {
@@ -117,34 +123,31 @@ router.delete("/:id", authMiddleware, async (req, res) => {
   }
 });
 
-
 // Get applicants for a job
 router.get("/:id/applicants", authMiddleware, async (req, res) => {
   try {
     const jobId = req.params.id;
 
-   const result = await pool.query(
-  `SELECT
-      applications.id AS application_id,
-      applications.status,
-      applications.applied_at,
-      users.id AS user_id,
-      users.name,
-      users.email,
-      users.resume
-   FROM applications
-   JOIN users ON applications.user_id = users.id
-   WHERE applications.job_id = $1`,
-  [jobId]
-);
+    const result = await pool.query(
+      `SELECT
+        applications.id AS application_id,
+        applications.status,
+        applications.applied_at,
+        users.id AS user_id,
+        users.name,
+        users.email,
+        users.resume
+       FROM applications
+       JOIN users ON applications.user_id = users.id
+       WHERE applications.job_id = $1`,
+      [jobId]
+    );
 
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
-
-
 
 // Update application status
 router.put("/applications/:id/status", authMiddleware, async (req, res) => {
@@ -178,7 +181,8 @@ router.get("/my/applications", authMiddleware, async (req, res) => {
         jobs.title,
         jobs.company,
         jobs.location,
-        jobs.salary
+        jobs.salary,
+        jobs.company_logo
        FROM applications
        JOIN jobs ON applications.job_id = jobs.id
        WHERE applications.user_id = $1
@@ -192,26 +196,43 @@ router.get("/my/applications", authMiddleware, async (req, res) => {
   }
 });
 
-
-// Update a job
-router.put("/:id", authMiddleware, async (req, res) => {
+// Update a job with optional company logo
+router.put("/:id", authMiddleware, upload.single("company_logo"), async (req, res) => {
   try {
     const jobId = req.params.id;
     const { title, company, location, salary, description } = req.body;
 
-    const result = await pool.query(
-      `UPDATE jobs
-       SET title=$1, company=$2, location=$3, salary=$4, description=$5
-       WHERE id=$6 AND created_by=$7
-       RETURNING *`,
-      [title, company, location, salary, description, jobId, req.user.id]
+    const oldJob = await pool.query(
+      "SELECT company_logo FROM jobs WHERE id=$1 AND created_by=$2",
+      [jobId, req.user.id]
     );
 
-    if (result.rows.length === 0) {
+    if (oldJob.rows.length === 0) {
       return res.status(404).json({
         message: "Job not found or you are not allowed to edit this job",
       });
     }
+
+    const companyLogo = req.file
+      ? `/uploads/${req.file.filename}`
+      : oldJob.rows[0].company_logo;
+
+    const result = await pool.query(
+      `UPDATE jobs
+       SET title=$1, company=$2, location=$3, salary=$4, description=$5, company_logo=$6
+       WHERE id=$7 AND created_by=$8
+       RETURNING *`,
+      [
+        title,
+        company,
+        location,
+        salary,
+        description,
+        companyLogo,
+        jobId,
+        req.user.id,
+      ]
+    );
 
     res.json({
       message: "Job updated successfully",

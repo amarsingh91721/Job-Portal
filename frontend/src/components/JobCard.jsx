@@ -23,25 +23,23 @@ function JobCard({ job }) {
     }
   };
 
-
-
   const handleSave = async () => {
-  try {
-    await api.post(
-      `/jobs/${job.id}/save`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    try {
+      await api.post(
+        `/jobs/${job.id}/save`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    alert("Job saved successfully!");
-  } catch (error) {
-    alert(error.response?.data?.message || "Save failed");
-  }
-};
+      alert("Job saved successfully!");
+    } catch (error) {
+      alert(error.response?.data?.message || "Save failed");
+    }
+  };
 
   const handleDelete = async () => {
     try {
@@ -60,25 +58,55 @@ function JobCard({ job }) {
 
   return (
     <div className="job-card">
+      {job.company_logo && (
+        <img
+          src={`http://localhost:5000${job.company_logo}`}
+          alt="Company Logo"
+         style={{
+  width: "70px",
+  height: "70px",
+  objectFit: "contain",
+  border: "1px solid #ddd",
+  borderRadius: "10px",
+  padding: "5px",
+  background: "#fff",
+  marginBottom: "10px",
+}}
+        />
+      )}
+
       <h2>{job.title}</h2>
 
-      <p><strong>Company:</strong> {job.company}</p>
-      <p><strong>Location:</strong> {job.location}</p>
-      <p><strong>Salary:</strong> {job.salary}</p>
+      <p>
+        <strong>Company:</strong> {job.company}
+      </p>
+      <p>
+        <strong>Location:</strong> {job.location}
+      </p>
+      <p>
+        <strong>Salary:</strong> {job.salary}
+      </p>
       <p>{job.description}</p>
 
-      <div style={{ marginTop: "15px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+      <div
+        style={{
+          marginTop: "15px",
+          display: "flex",
+          gap: "10px",
+          flexWrap: "wrap",
+        }}
+      >
         {user?.role === "candidate" && (
-  <>
-    <button className="apply-btn" onClick={handleApply}>
-      Apply
-    </button>
+          <>
+            <button className="apply-btn" onClick={handleApply}>
+              Apply
+            </button>
 
-    <button className="save-btn" onClick={handleSave}>
-      Save
-    </button>
-  </>
-   )}
+            <button className="save-btn" onClick={handleSave}>
+              Save
+            </button>
+          </>
+        )}
 
         {user?.role === "recruiter" && (
           <>

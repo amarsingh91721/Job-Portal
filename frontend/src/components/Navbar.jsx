@@ -30,6 +30,7 @@ function Navbar() {
         
        {token && user?.role === "candidate" && (
        <Link to="/saved-jobs">Saved Jobs</Link>
+       
        )}
 
         {!token ? (
