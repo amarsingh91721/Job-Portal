@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:15
+
+    environment:
+      POSTGRES_USER: amar
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: job_portal
+
+    ports:
+      - "5435:5432"
+
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql

@@ -1,0 +1,348 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f5f7fb;
+}
+
+.navbar {
+  background: #1f2937;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 60px;
+}
+
+.navbar h2 {
+  font-size: 28px;
+}
+
+.navbar div {
+  display: flex;
+  gap: 25px;
+}
+
+.navbar a {
+  text-decoration: none;
+  color: white;
+  font-size: 18px;
+}
+
+.navbar a:hover {
+  color: #60a5fa;
+}
+
+.home {
+  text-align: center;
+  margin-top: 100px;
+}
+
+.home h1 {
+  font-size: 60px;
+  color: #111827;
+}
+
+.home p {
+  margin-top: 20px;
+  font-size: 22px;
+  color: #6b7280;
+}
+
+.jobs-page {
+  padding: 40px 60px;
+}
+
+.jobs-page h1 {
+  margin-bottom: 30px;
+  color: #111827;
+}
+
+.jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.job-card {
+  background: white;
+  padding: 22px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.job-card h3 {
+  margin-bottom: 12px;
+  color: #1f2937;
+}
+
+.job-card p {
+  margin-bottom: 8px;
+  color: #4b5563;
+}
+
+.login-page {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f5f7fb;
+}
+
+.login-box {
+  width: 380px;
+  background: white;
+  padding: 35px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+}
+
+.login-box h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #111827;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 13px;
+  margin-bottom: 15px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.login-box button {
+  width: 100%;
+  padding: 13px;
+  background: #1f2937;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.login-box button:hover {
+  background: #374151;
+}
+
+.logout-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  color: #60a5fa;
+}
+
+.dashboard-page {
+  padding: 50px 70px;
+}
+
+.dashboard-card {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  margin-top: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.dashboard-page {
+  padding: 50px 70px;
+  color: #111827;
+  min-height: calc(100vh - 70px);
+  background: #f5f7fb;
+}
+
+.dashboard-card {
+  background: white;
+  color: #111827;
+  padding: 30px;
+  border-radius: 12px;
+  margin-top: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.dashboard-card p {
+  color: #374151;
+  margin-top: 10px;
+}
+
+.apply-btn {
+  margin-top: 12px;
+  padding: 10px 18px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.apply-btn:hover {
+  background: #1d4ed8;
+}
+
+.home-page {
+  background: #f5f7fb;
+  min-height: calc(100vh - 70px);
+}
+
+.hero {
+  padding: 100px 70px;
+  background: linear-gradient(135deg, #1f2937, #2563eb);
+  color: white;
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 58px;
+  margin-bottom: 20px;
+}
+
+.hero p {
+  font-size: 22px;
+  max-width: 700px;
+  margin: auto;
+  margin-bottom: 35px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.primary-btn,
+.secondary-btn {
+  padding: 14px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 18px;
+}
+
+.primary-btn {
+  background: white;
+  color: #1f2937;
+}
+
+.secondary-btn {
+  border: 2px solid white;
+  color: white;
+}
+
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 50px;
+}
+
+.stats div {
+  background: white;
+  padding: 30px 60px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.stats h2 {
+  font-size: 36px;
+  color: #2563eb;
+}
+
+.companies {
+  padding: 40px 70px;
+  text-align: center;
+}
+
+.company-list {
+  margin-top: 25px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 20px;
+}
+
+.company-list div {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.search-box {
+  width: 100%;
+  max-width: 500px;
+  padding: 14px;
+  margin: 25px 0;
+  font-size: 17px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.search-box:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.applicant-table {
+  width: 100%;
+  margin-top: 30px;
+  border-collapse: collapse;
+  background: white;
+}
+
+.applicant-table th,
+.applicant-table td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+}
+
+.applicant-table th {
+  background: #2563eb;
+  color: white;
+}
+
+.save-btn {
+  padding: 10px 18px;
+  background: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.save-btn:hover {
+  background: #d97706;
+}
+
+.resume-box {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #ddd;
+}
+
+.resume-box h3 {
+  margin-bottom: 10px;
+}
+
+.resume-box input {
+  display: block;
+  margin: 15px 0;
+}
+
+.resume-box a {
+  color: #2563eb;
+  font-weight: bold;
+  text-decoration: none;
+}
