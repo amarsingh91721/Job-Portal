@@ -10,7 +10,7 @@ const router = express.Router();
 
 const JWT_SECRET = "mysecretkey";
 
-// multer setup
+// Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// register
+// Register
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -30,7 +30,19 @@ router.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
-      "INSERT INTO users(name, email, password, role) VALUES($1, $2, $3, $4) RETURNING id, name, email, role, resume",
+      `INSERT INTO users(name, email, password, role)
+       VALUES($1, $2, $3, $4)
+       RETURNING
+       id,
+       name,
+       email,
+       role,
+       resume,
+       profile_photo,
+       phone,
+       location,
+       bio,
+       company`,
       [name, email, hashedPassword, role || "candidate"]
     );
 
@@ -51,14 +63,15 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// login
+// Login
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const result = await pool.query("SELECT * FROM users WHERE email=$1", [
-      email,
-    ]);
+    const result = await pool.query(
+      "SELECT * FROM users WHERE email=$1",
+      [email]
+    );
 
     if (result.rows.length === 0) {
       return res.status(400).json({
@@ -95,6 +108,11 @@ router.post("/login", async (req, res) => {
         email: user.email,
         role: user.role,
         resume: user.resume,
+        profile_photo: user.profile_photo,
+        phone: user.phone,
+        location: user.location,
+        bio: user.bio,
+        company: user.company,
       },
     });
   } catch (error) {
@@ -104,7 +122,138 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// upload resume
+// Get logged-in user profile
+router.get("/profile", authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+       id,
+       name,
+       email,
+       role,
+       resume,
+       profile_photo,
+       phone,
+       location,
+       bio,
+       company
+       FROM users
+       WHERE id=$1`,
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "User profile not found",
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
+
+// Update profile details
+router.put("/profile", authMiddleware, async (req, res) => {
+  try {
+    const { name, phone, location, bio, company } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        message: "Name is required",
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE users
+       SET
+       name=$1,
+       phone=$2,
+       location=$3,
+       bio=$4,
+       company=$5
+       WHERE id=$6
+       RETURNING
+       id,
+       name,
+       email,
+       role,
+       resume,
+       profile_photo,
+       phone,
+       location,
+       bio,
+       company`,
+      [
+        name.trim(),
+        phone || null,
+        location || null,
+        bio || null,
+        company || null,
+        req.user.id,
+      ]
+    );
+
+    res.json({
+      message: "Profile updated successfully",
+      user: result.rows[0],
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
+
+// Upload profile photo
+router.post(
+  "/upload-profile-photo",
+  authMiddleware,
+  upload.single("profile_photo"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          message: "No profile photo uploaded",
+        });
+      }
+
+      const profilePhotoPath = `/uploads/${req.file.filename}`;
+
+      const result = await pool.query(
+        `UPDATE users
+         SET profile_photo=$1
+         WHERE id=$2
+         RETURNING
+         id,
+         name,
+         email,
+         role,
+         resume,
+         profile_photo,
+         phone,
+         location,
+         bio,
+         company`,
+        [profilePhotoPath, req.user.id]
+      );
+
+      res.json({
+        message: "Profile photo uploaded successfully",
+        user: result.rows[0],
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: error.message,
+      });
+    }
+  }
+);
+
+// Upload resume
 router.post(
   "/upload-resume",
   authMiddleware,
@@ -117,10 +266,23 @@ router.post(
         });
       }
 
-      const resumePath = req.file.path;
+      const resumePath = `/uploads/${req.file.filename}`;
 
       const result = await pool.query(
-        "UPDATE users SET resume=$1 WHERE id=$2 RETURNING id, name, email, role, resume",
+        `UPDATE users
+         SET resume=$1
+         WHERE id=$2
+         RETURNING
+         id,
+         name,
+         email,
+         role,
+         resume,
+         profile_photo,
+         phone,
+         location,
+         bio,
+         company`,
         [resumePath, req.user.id]
       );
 

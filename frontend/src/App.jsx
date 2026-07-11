@@ -1,20 +1,19 @@
-
-
 import { Routes, Route } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RecruiterRoute from "./components/RecruiterRoute";
-import Applicants from "./pages/Applicants";
-import EditJob from "./pages/EditJob";
-import SavedJobs from "./pages/SavedJobs";
 
 import Home from "./pages/Home";
 import Jobs from "./pages/Jobs";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import PostJob from "./pages/PostJob";
 import Dashboard from "./pages/Dashboard";
+import PostJob from "./pages/PostJob";
+import EditJob from "./pages/EditJob";
+import Applicants from "./pages/Applicants";
+import SavedJobs from "./pages/SavedJobs";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -27,14 +26,6 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-       <Route
-  path="/applicants/:id"
-  element={
-    <RecruiterRoute>
-      <Applicants />
-    </RecruiterRoute>
-  }
-/>
         <Route
           path="/dashboard"
           element={
@@ -42,39 +33,54 @@ function App() {
               <Dashboard />
             </ProtectedRoute>
           }
-
-          
         />
+
         <Route
-  path="/edit-job/:id"
-  element={
-    <RecruiterRoute>
-      <EditJob />
-    </RecruiterRoute>
-  }
-/>
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
 
+        <Route
+          path="/saved-jobs"
+          element={
+            <ProtectedRoute>
+              <SavedJobs />
+            </ProtectedRoute>
+          }
+        />
 
-<Route
-  path="/saved-jobs"
-  element={
-    <ProtectedRoute>
-      <SavedJobs />
-    </ProtectedRoute>
-  }
-/>
-       <Route
-  path="/post-job"
-  element={
-    <RecruiterRoute>
-      <PostJob />
-    </RecruiterRoute>
-  }
-/>
+        <Route
+          path="/post-job"
+          element={
+            <RecruiterRoute>
+              <PostJob />
+            </RecruiterRoute>
+          }
+        />
+
+        <Route
+          path="/edit-job/:id"
+          element={
+            <RecruiterRoute>
+              <EditJob />
+            </RecruiterRoute>
+          }
+        />
+
+        <Route
+          path="/applicants/:id"
+          element={
+            <RecruiterRoute>
+              <Applicants />
+            </RecruiterRoute>
+          }
+        />
       </Routes>
     </>
-
-    
   );
 }
 
