@@ -4,6 +4,19 @@ import api from "../services/api";
 
 function Navbar() {
   const navigate = useNavigate();
+  const [darkMode, setDarkMode] = useState(
+  localStorage.getItem("theme") === "dark"
+);
+
+ useEffect(() => {
+  if (darkMode) {
+    document.body.classList.add("dark");
+    localStorage.setItem("theme", "dark");
+  } else {
+    document.body.classList.remove("dark");
+    localStorage.setItem("theme", "light");
+  }
+}, [darkMode]);
 
   const token = localStorage.getItem("token");
   const storedUser = localStorage.getItem("user");
@@ -95,12 +108,21 @@ function Navbar() {
             <Link to="/register">Register</Link>
           </>
         ) : (
-          <button
-            className="logout-btn"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
+          <>
+  <button
+    className="theme-btn"
+    onClick={() => setDarkMode(!darkMode)}
+  >
+    {darkMode ? "☀️ Light" : "🌙 Dark"}
+  </button>
+
+  <button
+    className="logout-btn"
+    onClick={handleLogout}
+  >
+    Logout
+  </button>
+</>
         )}
       </div>
     </nav>
