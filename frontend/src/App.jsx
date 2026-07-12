@@ -15,6 +15,8 @@ import Applicants from "./pages/Applicants";
 import SavedJobs from "./pages/SavedJobs";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
+import JobDetails from "./pages/JobDetails";
+
 
 function App() {
   return (
@@ -24,6 +26,11 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/jobs" element={<Jobs />} />
+        <Route
+          path="/jobs/:id"
+          element={<JobDetails />}
+          />
+          
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 

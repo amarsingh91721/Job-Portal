@@ -305,6 +305,9 @@ router.get("/my/applications", authMiddleware, async (req, res) => {
   }
 });
 
+
+
+
 // Get candidate saved jobs
 router.get("/my/saved", authMiddleware, async (req, res) => {
   try {
@@ -322,6 +325,75 @@ router.get("/my/saved", authMiddleware, async (req, res) => {
   } catch (err) {
     res.status(500).json({
       message: err.message,
+    });
+  }
+});
+
+// Get similar jobs
+router.get("/:id/similar", async (req, res) => {
+  try {
+    const jobId = req.params.id;
+
+    const currentJobResult = await pool.query(
+      `SELECT category, job_type, work_mode
+       FROM jobs
+       WHERE id=$1`,
+      [jobId]
+    );
+
+    if (currentJobResult.rows.length === 0) {
+      return res.status(404).json({
+        message: "Job not found",
+      });
+    }
+
+    const currentJob = currentJobResult.rows[0];
+
+    const result = await pool.query(
+      `SELECT *
+       FROM jobs
+       WHERE id != $1
+       AND (
+         category = $2
+         OR job_type = $3
+         OR work_mode = $4
+       )
+       ORDER BY created_at DESC
+       LIMIT 3`,
+      [
+        jobId,
+        currentJob.category,
+        currentJob.job_type,
+        currentJob.work_mode,
+      ]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
+
+// Get one job by ID
+router.get("/:id", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM jobs WHERE id=$1",
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Job not found",
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
     });
   }
 });
@@ -356,6 +428,8 @@ router.post("/:id/apply", authMiddleware, async (req, res) => {
   }
 });
 
+
+
 // Save a job
 router.post("/:id/save", authMiddleware, async (req, res) => {
   try {
@@ -379,6 +453,53 @@ router.post("/:id/save", authMiddleware, async (req, res) => {
 
     res.status(500).json({
       message: err.message,
+    });
+  }
+});
+
+
+// Check whether a job is saved by the logged-in candidate
+router.get("/:id/saved-status", authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id
+       FROM saved_jobs
+       WHERE job_id=$1 AND user_id=$2`,
+      [req.params.id, req.user.id]
+    );
+
+    res.json({
+      isSaved: result.rows.length > 0,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
+
+// Unsave a job
+router.delete("/:id/save", authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `DELETE FROM saved_jobs
+       WHERE job_id=$1 AND user_id=$2
+       RETURNING *`,
+      [req.params.id, req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Saved job not found",
+      });
+    }
+
+    res.json({
+      message: "Job removed from saved jobs",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
     });
   }
 });
