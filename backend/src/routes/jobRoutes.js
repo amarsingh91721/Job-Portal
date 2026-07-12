@@ -10,6 +10,7 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "uploads/");
   },
+
   filename: function (req, file, cb) {
     cb(null, Date.now() + "-" + file.originalname);
   },
@@ -17,59 +18,254 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Get all jobs
+// Get all jobs with search, filters and sorting
 router.get("/", async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM jobs ORDER BY created_at DESC"
-    );
+    const {
+      search,
+      category,
+      job_type,
+      work_mode,
+      experience_level,
+      location,
+      sort,
+    } = req.query;
+
+    let query = "SELECT * FROM jobs WHERE 1=1";
+
+    const values = [];
+    let parameterNumber = 1;
+
+    // Search using title, company, location or description
+    if (search) {
+      query += `
+        AND (
+          title ILIKE $${parameterNumber}
+          OR company ILIKE $${parameterNumber}
+          OR location ILIKE $${parameterNumber}
+          OR description ILIKE $${parameterNumber}
+        )
+      `;
+
+      values.push(`%${search}%`);
+      parameterNumber++;
+    }
+
+    if (category) {
+      query += ` AND category = $${parameterNumber}`;
+      values.push(category);
+      parameterNumber++;
+    }
+
+    if (job_type) {
+      query += ` AND job_type = $${parameterNumber}`;
+      values.push(job_type);
+      parameterNumber++;
+    }
+
+    if (work_mode) {
+      query += ` AND work_mode = $${parameterNumber}`;
+      values.push(work_mode);
+      parameterNumber++;
+    }
+
+    if (experience_level) {
+      query += ` AND experience_level = $${parameterNumber}`;
+      values.push(experience_level);
+      parameterNumber++;
+    }
+
+    if (location) {
+      query += ` AND location ILIKE $${parameterNumber}`;
+      values.push(`%${location}%`);
+      parameterNumber++;
+    }
+
+    // Sorting
+    if (sort === "oldest") {
+      query += " ORDER BY created_at ASC";
+    } else if (sort === "salary_high") {
+      query += `
+        ORDER BY
+        NULLIF(
+          regexp_replace(salary, '[^0-9.]', '', 'g'),
+          ''
+        )::numeric DESC NULLS LAST
+      `;
+    } else if (sort === "salary_low") {
+      query += `
+        ORDER BY
+        NULLIF(
+          regexp_replace(salary, '[^0-9.]', '', 'g'),
+          ''
+        )::numeric ASC NULLS LAST
+      `;
+    } else {
+      query += " ORDER BY created_at DESC";
+    }
+
+    const result = await pool.query(query, values);
 
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.log("GET JOBS ERROR:", err);
+
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 
-// Post a new job with company logo
-router.post("/", authMiddleware, upload.single("company_logo"), async (req, res) => {
-  try {
-    const { title, company, location, salary, description } = req.body;
-
-    const companyLogo = req.file ? `/uploads/${req.file.filename}` : null;
-
-    const result = await pool.query(
-      `INSERT INTO jobs
-      (title, company, location, salary, description, created_by, company_logo)
-      VALUES($1,$2,$3,$4,$5,$6,$7)
-      RETURNING *`,
-      [
+// Post a new job with company logo and filter fields
+router.post(
+  "/",
+  authMiddleware,
+  upload.single("company_logo"),
+  async (req, res) => {
+    try {
+      const {
         title,
         company,
         location,
         salary,
         description,
-        req.user.id,
-        companyLogo,
-      ]
-    );
+        category,
+        job_type,
+        work_mode,
+        experience_level,
+      } = req.body;
 
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+      if (!title || !company || !location || !description) {
+        return res.status(400).json({
+          message:
+            "Title, company, location and description are required.",
+        });
+      }
+
+      const companyLogo = req.file
+        ? `/uploads/${req.file.filename}`
+        : null;
+
+      const result = await pool.query(
+        `INSERT INTO jobs
+        (
+          title,
+          company,
+          location,
+          salary,
+          description,
+          created_by,
+          company_logo,
+          category,
+          job_type,
+          work_mode,
+          experience_level
+        )
+        VALUES(
+          $1, $2, $3, $4, $5, $6,
+          $7, $8, $9, $10, $11
+        )
+        RETURNING *`,
+        [
+          title,
+          company,
+          location,
+          salary,
+          description,
+          req.user.id,
+          companyLogo,
+          category || null,
+          job_type || null,
+          work_mode || null,
+          experience_level || null,
+        ]
+      );
+
+      res.status(201).json({
+        message: "Job posted successfully",
+        job: result.rows[0],
+      });
+    } catch (err) {
+      console.log("POST JOB ERROR:", err);
+
+      res.status(500).json({
+        message: err.message,
+      });
+    }
   }
-});
+);
 
 // Get jobs posted by logged-in recruiter
 router.get("/my/jobs", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM jobs WHERE created_by=$1 ORDER BY created_at DESC",
+      `SELECT *
+       FROM jobs
+       WHERE created_by=$1
+       ORDER BY created_at DESC`,
       [req.user.id]
     );
 
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+});
+
+// Get candidate applications
+router.get("/my/applications", authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+        applications.id AS application_id,
+        applications.status,
+        applications.applied_at,
+        jobs.id AS job_id,
+        jobs.title,
+        jobs.company,
+        jobs.location,
+        jobs.salary,
+        jobs.company_logo,
+        jobs.category,
+        jobs.job_type,
+        jobs.work_mode,
+        jobs.experience_level
+       FROM applications
+       JOIN jobs
+       ON applications.job_id = jobs.id
+       WHERE applications.user_id = $1
+       ORDER BY applications.applied_at DESC`,
+      [req.user.id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+});
+
+// Get candidate saved jobs
+router.get("/my/saved", authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT jobs.*
+       FROM saved_jobs
+       JOIN jobs
+       ON saved_jobs.job_id = jobs.id
+       WHERE saved_jobs.user_id = $1
+       ORDER BY saved_jobs.saved_at DESC`,
+      [req.user.id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 
@@ -80,7 +276,9 @@ router.post("/:id/apply", authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     const result = await pool.query(
-      "INSERT INTO applications(job_id, user_id) VALUES($1, $2) RETURNING *",
+      `INSERT INTO applications(job_id, user_id)
+       VALUES($1, $2)
+       RETURNING *`,
       [jobId, userId]
     );
 
@@ -101,25 +299,30 @@ router.post("/:id/apply", authMiddleware, async (req, res) => {
   }
 });
 
-// Delete a job
-router.delete("/:id", authMiddleware, async (req, res) => {
+// Save a job
+router.post("/:id/save", authMiddleware, async (req, res) => {
   try {
-    const jobId = req.params.id;
-
     const result = await pool.query(
-      "DELETE FROM jobs WHERE id=$1 AND created_by=$2 RETURNING *",
-      [jobId, req.user.id]
+      `INSERT INTO saved_jobs(job_id, user_id)
+       VALUES($1, $2)
+       RETURNING *`,
+      [req.params.id, req.user.id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        message: "Job not found or you are not allowed to delete this job",
+    res.json({
+      message: "Job saved successfully",
+      savedJob: result.rows[0],
+    });
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(400).json({
+        message: "Job already saved",
       });
     }
 
-    res.json({ message: "Job deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 
@@ -127,6 +330,20 @@ router.delete("/:id", authMiddleware, async (req, res) => {
 router.get("/:id/applicants", authMiddleware, async (req, res) => {
   try {
     const jobId = req.params.id;
+
+    const jobOwner = await pool.query(
+      `SELECT id
+       FROM jobs
+       WHERE id=$1 AND created_by=$2`,
+      [jobId, req.user.id]
+    );
+
+    if (jobOwner.rows.length === 0) {
+      return res.status(403).json({
+        message:
+          "You are not allowed to view applicants for this job.",
+      });
+    }
 
     const result = await pool.query(
       `SELECT
@@ -136,146 +353,190 @@ router.get("/:id/applicants", authMiddleware, async (req, res) => {
         users.id AS user_id,
         users.name,
         users.email,
-        users.resume
+        users.resume,
+        users.profile_photo,
+        users.phone,
+        users.location
        FROM applications
-       JOIN users ON applications.user_id = users.id
-       WHERE applications.job_id = $1`,
+       JOIN users
+       ON applications.user_id = users.id
+       WHERE applications.job_id = $1
+       ORDER BY applications.applied_at DESC`,
       [jobId]
     );
 
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 
 // Update application status
-router.put("/applications/:id/status", authMiddleware, async (req, res) => {
-  try {
-    const applicationId = req.params.id;
-    const { status } = req.body;
+router.put(
+  "/applications/:id/status",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const applicationId = req.params.id;
+      const { status } = req.body;
 
-    const result = await pool.query(
-      "UPDATE applications SET status=$1 WHERE id=$2 RETURNING *",
-      [status, applicationId]
-    );
+      const allowedStatuses = [
+        "pending",
+        "accepted",
+        "rejected",
+      ];
 
-    res.json({
-      message: "Status updated successfully",
-      application: result.rows[0],
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          message:
+            "Status must be pending, accepted or rejected.",
+        });
+      }
 
-// Get my applications
-router.get("/my/applications", authMiddleware, async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT 
-        applications.id AS application_id,
-        applications.status,
-        applications.applied_at,
-        jobs.id AS job_id,
-        jobs.title,
-        jobs.company,
-        jobs.location,
-        jobs.salary,
-        jobs.company_logo
-       FROM applications
-       JOIN jobs ON applications.job_id = jobs.id
-       WHERE applications.user_id = $1
-       ORDER BY applications.applied_at DESC`,
-      [req.user.id]
-    );
+      const result = await pool.query(
+        `UPDATE applications
+         SET status=$1
+         WHERE id=$2
+         AND job_id IN (
+           SELECT id
+           FROM jobs
+           WHERE created_by=$3
+         )
+         RETURNING *`,
+        [status, applicationId, req.user.id]
+      );
 
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          message:
+            "Application not found or you cannot update it.",
+        });
+      }
 
-// Update a job with optional company logo
-router.put("/:id", authMiddleware, upload.single("company_logo"), async (req, res) => {
-  try {
-    const jobId = req.params.id;
-    const { title, company, location, salary, description } = req.body;
-
-    const oldJob = await pool.query(
-      "SELECT company_logo FROM jobs WHERE id=$1 AND created_by=$2",
-      [jobId, req.user.id]
-    );
-
-    if (oldJob.rows.length === 0) {
-      return res.status(404).json({
-        message: "Job not found or you are not allowed to edit this job",
+      res.json({
+        message: "Status updated successfully",
+        application: result.rows[0],
+      });
+    } catch (err) {
+      res.status(500).json({
+        message: err.message,
       });
     }
+  }
+);
 
-    const companyLogo = req.file
-      ? `/uploads/${req.file.filename}`
-      : oldJob.rows[0].company_logo;
+// Update a job with optional company logo
+router.put(
+  "/:id",
+  authMiddleware,
+  upload.single("company_logo"),
+  async (req, res) => {
+    try {
+      const jobId = req.params.id;
 
-    const result = await pool.query(
-      `UPDATE jobs
-       SET title=$1, company=$2, location=$3, salary=$4, description=$5, company_logo=$6
-       WHERE id=$7 AND created_by=$8
-       RETURNING *`,
-      [
+      const {
         title,
         company,
         location,
         salary,
         description,
-        companyLogo,
-        jobId,
-        req.user.id,
-      ]
-    );
+        category,
+        job_type,
+        work_mode,
+        experience_level,
+      } = req.body;
 
-    res.json({
-      message: "Job updated successfully",
-      job: result.rows[0],
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+      const oldJob = await pool.query(
+        `SELECT company_logo
+         FROM jobs
+         WHERE id=$1 AND created_by=$2`,
+        [jobId, req.user.id]
+      );
+
+      if (oldJob.rows.length === 0) {
+        return res.status(404).json({
+          message:
+            "Job not found or you are not allowed to edit this job",
+        });
+      }
+
+      const companyLogo = req.file
+        ? `/uploads/${req.file.filename}`
+        : oldJob.rows[0].company_logo;
+
+      const result = await pool.query(
+        `UPDATE jobs
+         SET
+           title=$1,
+           company=$2,
+           location=$3,
+           salary=$4,
+           description=$5,
+           company_logo=$6,
+           category=$7,
+           job_type=$8,
+           work_mode=$9,
+           experience_level=$10
+         WHERE id=$11 AND created_by=$12
+         RETURNING *`,
+        [
+          title,
+          company,
+          location,
+          salary,
+          description,
+          companyLogo,
+          category || null,
+          job_type || null,
+          work_mode || null,
+          experience_level || null,
+          jobId,
+          req.user.id,
+        ]
+      );
+
+      res.json({
+        message: "Job updated successfully",
+        job: result.rows[0],
+      });
+    } catch (err) {
+      console.log("UPDATE JOB ERROR:", err);
+
+      res.status(500).json({
+        message: err.message,
+      });
+    }
   }
-});
+);
 
-// Save a job
-router.post("/:id/save", authMiddleware, async (req, res) => {
+// Delete a job
+router.delete("/:id", authMiddleware, async (req, res) => {
   try {
+    const jobId = req.params.id;
+
     const result = await pool.query(
-      "INSERT INTO saved_jobs(job_id, user_id) VALUES($1, $2) RETURNING *",
-      [req.params.id, req.user.id]
+      `DELETE FROM jobs
+       WHERE id=$1 AND created_by=$2
+       RETURNING *`,
+      [jobId, req.user.id]
     );
 
-    res.json({ message: "Job saved successfully", savedJob: result.rows[0] });
-  } catch (err) {
-    if (err.code === "23505") {
-      return res.status(400).json({ message: "Job already saved" });
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message:
+          "Job not found or you are not allowed to delete this job",
+      });
     }
 
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Get my saved jobs
-router.get("/my/saved", authMiddleware, async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT jobs.*
-       FROM saved_jobs
-       JOIN jobs ON saved_jobs.job_id = jobs.id
-       WHERE saved_jobs.user_id = $1
-       ORDER BY saved_jobs.saved_at DESC`,
-      [req.user.id]
-    );
-
-    res.json(result.rows);
+    res.json({
+      message: "Job deleted successfully",
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 

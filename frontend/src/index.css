@@ -572,3 +572,74 @@ body {
     padding: 20px;
   }
 }
+
+.login-box select,
+.login-box textarea {
+  width: 100%;
+  padding: 13px;
+  margin-bottom: 15px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 16px;
+  font-family: inherit;
+  background: white;
+}
+
+.login-box textarea {
+  resize: vertical;
+}
+
+.job-filter-panel {
+  background: white;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(190px, 1fr)
+  );
+  gap: 15px;
+}
+
+.job-filter-panel input,
+.job-filter-panel select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 15px;
+  background: white;
+}
+
+.job-filter-panel .search-box {
+  max-width: none;
+  margin: 0;
+}
+
+.job-filter-panel input:focus,
+.job-filter-panel select:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.clear-filter-btn {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 7px;
+  background: #dc2626;
+  color: white;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.clear-filter-btn:hover {
+  background: #b91c1c;
+}
+
+.job-result-count {
+  margin: 15px 0 25px;
+  color: #4b5563;
+  font-weight: bold;
+}
