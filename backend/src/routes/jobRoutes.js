@@ -430,11 +430,13 @@ router.get("/:id/applicants", authMiddleware, async (req, res) => {
   }
 });
 
-// Update application status
+// Update application status and create notification
 router.put(
   "/applications/:id/status",
   authMiddleware,
   async (req, res) => {
+    const client = await pool.connect();
+
     try {
       const applicationId = req.params.id;
       const { status } = req.body;
@@ -452,7 +454,9 @@ router.put(
         });
       }
 
-      const result = await pool.query(
+      await client.query("BEGIN");
+
+      const result = await client.query(
         `UPDATE applications
          SET status=$1
          WHERE id=$2
@@ -461,25 +465,57 @@ router.put(
            FROM jobs
            WHERE created_by=$3
          )
-         RETURNING *`,
+         RETURNING id, job_id, user_id, status`,
         [status, applicationId, req.user.id]
       );
 
       if (result.rows.length === 0) {
+        await client.query("ROLLBACK");
+
         return res.status(404).json({
           message:
             "Application not found or you cannot update it.",
         });
       }
 
+      const application = result.rows[0];
+
+      const jobResult = await client.query(
+        `SELECT title, company
+         FROM jobs
+         WHERE id=$1`,
+        [application.job_id]
+      );
+
+      const job = jobResult.rows[0];
+
+      const message =
+        status === "accepted"
+          ? `Your application for ${job.title} at ${job.company} has been accepted.`
+          : status === "rejected"
+          ? `Your application for ${job.title} at ${job.company} has been rejected.`
+          : `Your application for ${job.title} at ${job.company} is pending review.`;
+
+      await client.query(
+        `INSERT INTO notifications(user_id, message)
+         VALUES($1, $2)`,
+        [application.user_id, message]
+      );
+
+      await client.query("COMMIT");
+
       res.json({
         message: "Status updated successfully",
-        application: result.rows[0],
+        application,
       });
-    } catch (err) {
+    } catch (error) {
+      await client.query("ROLLBACK");
+
       res.status(500).json({
-        message: err.message,
+        message: error.message,
       });
+    } finally {
+      client.release();
     }
   }
 );

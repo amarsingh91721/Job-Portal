@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import api from "../services/api";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -6,6 +8,40 @@ function Navbar() {
   const token = localStorage.getItem("token");
   const storedUser = localStorage.getItem("user");
   const user = storedUser ? JSON.parse(storedUser) : null;
+
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await api.get(
+          "/notifications/unread-count",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setUnreadCount(response.data.unread_count);
+      } catch (error) {
+        console.log(
+          "Notification count error:",
+          error.response?.data
+        );
+      }
+    };
+
+    fetchUnreadCount();
+
+    const interval = setInterval(fetchUnreadCount, 15000);
+
+    return () => clearInterval(interval);
+  }, [token]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -29,6 +65,21 @@ function Navbar() {
         {token && <Link to="/dashboard">Dashboard</Link>}
 
         {token && <Link to="/profile">Profile</Link>}
+
+        {token && user?.role === "candidate" && (
+          <Link
+            to="/notifications"
+            className="notification-navbar-link"
+          >
+            Notifications
+
+            {unreadCount > 0 && (
+              <span className="notification-badge">
+                {unreadCount}
+              </span>
+            )}
+          </Link>
+        )}
 
         {token && user?.role === "recruiter" && (
           <Link to="/post-job">Post Job</Link>

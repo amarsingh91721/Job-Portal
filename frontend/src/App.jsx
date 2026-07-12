@@ -14,6 +14,7 @@ import EditJob from "./pages/EditJob";
 import Applicants from "./pages/Applicants";
 import SavedJobs from "./pages/SavedJobs";
 import Profile from "./pages/Profile";
+import Notifications from "./pages/Notifications";
 
 function App() {
   return (
@@ -40,6 +41,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
             </ProtectedRoute>
           }
         />
