@@ -214,6 +214,63 @@ router.get("/my/jobs", authMiddleware, async (req, res) => {
   }
 });
 
+// Recruiter dashboard analytics
+router.get("/analytics/recruiter", authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== "recruiter") {
+      return res.status(403).json({
+        message: "Only recruiters can view analytics",
+      });
+    }
+
+    const summaryResult = await pool.query(
+      `SELECT
+        COUNT(DISTINCT jobs.id)::int AS total_jobs,
+        COUNT(applications.id)::int AS total_applications,
+        COUNT(applications.id) FILTER (
+          WHERE applications.status = 'pending'
+        )::int AS pending,
+        COUNT(applications.id) FILTER (
+          WHERE applications.status = 'accepted'
+        )::int AS accepted,
+        COUNT(applications.id) FILTER (
+          WHERE applications.status = 'rejected'
+        )::int AS rejected
+       FROM jobs
+       LEFT JOIN applications
+       ON applications.job_id = jobs.id
+       WHERE jobs.created_by = $1`,
+      [req.user.id]
+    );
+
+    const jobStatsResult = await pool.query(
+      `SELECT
+        jobs.id,
+        jobs.title,
+        jobs.company,
+        COUNT(applications.id)::int AS application_count
+       FROM jobs
+       LEFT JOIN applications
+       ON applications.job_id = jobs.id
+       WHERE jobs.created_by = $1
+       GROUP BY jobs.id, jobs.title, jobs.company
+       ORDER BY application_count DESC, jobs.created_at DESC`,
+      [req.user.id]
+    );
+
+    res.json({
+      summary: summaryResult.rows[0],
+      jobs: jobStatsResult.rows,
+    });
+  } catch (error) {
+    console.log("ANALYTICS ERROR:", error);
+
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
+
 // Get candidate applications
 router.get("/my/applications", authMiddleware, async (req, res) => {
   try {
