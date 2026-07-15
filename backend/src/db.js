@@ -7,4 +7,14 @@ const pool = new Pool({
   },
 });
 
+// Test database connection
+pool.connect()
+  .then((client) => {
+    console.log("✅ Connected to Neon PostgreSQL");
+    client.release();
+  })
+  .catch((err) => {
+    console.error("❌ Database connection failed:", err.message);
+  });
+
 module.exports = pool;
