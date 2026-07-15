@@ -8,7 +8,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-const JWT_SECRET = "mysecretkey";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Multer setup
 const storage = multer.diskStorage({
