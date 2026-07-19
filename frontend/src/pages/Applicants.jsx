@@ -23,27 +23,32 @@ function Applicants() {
     loadApplicants();
   }, []);
 
-  const updateStatus = async (applicationId, status) => {
-    try {
-      const token = localStorage.getItem("token");
+  const updateStatus = async (applicationId, newStatus, currentStatus) => {
+  if (currentStatus === newStatus) {
+    alert(`Application is already ${newStatus}`);
+    return;
+  }
 
-      await api.put(
-        `/jobs/applications/${applicationId}/status`,
-        { status },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+  try {
+    const token = localStorage.getItem("token");
 
-      alert(`Application ${status}`);
-      loadApplicants();
-    } catch (error) {
-      alert("Status update failed");
-      console.log(error.response?.data);
-    }
-  };
+    await api.put(
+      `/jobs/applications/${applicationId}/status`,
+      { status: newStatus },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    alert(`Application ${newStatus}`);
+    loadApplicants();
+  } catch (error) {
+    alert(error.response?.data?.message || "Status update failed");
+    console.log(error.response?.data);
+  }
+};
 
   return (
     <div className="dashboard-page">
@@ -91,25 +96,43 @@ function Applicants() {
 
                 <td>{new Date(applicant.applied_at).toLocaleDateString()}</td>
                 <td>
-                  <button
-                    className="apply-btn"
-                    onClick={() =>
-                      updateStatus(applicant.application_id, "accepted")
-                    }
-                  >
-                    Accept
-                  </button>
+  {applicant.status === "pending" ? (
+    <>
+      <button
+        className="apply-btn"
+        onClick={() =>
+          updateStatus(
+            applicant.application_id,
+            "accepted",
+            applicant.status
+          )
+        }
+      >
+        Accept
+      </button>
 
-                  <button
-                    className="delete-btn"
-                    style={{ marginLeft: "8px" }}
-                    onClick={() =>
-                      updateStatus(applicant.application_id, "rejected")
-                    }
-                  >
-                    Reject
-                  </button>
-                </td>
+      <button
+        className="delete-btn"
+        style={{ marginLeft: "8px" }}
+        onClick={() =>
+          updateStatus(
+            applicant.application_id,
+            "rejected",
+            applicant.status
+          )
+        }
+      >
+        Reject
+      </button>
+    </>
+  ) : (
+    <strong>
+      {applicant.status === "accepted"
+        ? "Accepted"
+        : "Rejected"}
+    </strong>
+  )}
+</td>
               </tr>
             ))}
           </tbody>
