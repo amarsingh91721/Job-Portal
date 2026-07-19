@@ -1,23 +1,41 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = "mysecretkey";
+const JWT_SECRET =
+  process.env.JWT_SECRET || "temporary_local_secret";
 
-function authMiddleware(req, res, next) {
-  const header = req.headers.authorization;
-
-  if (!header) {
-    return res.status(401).json({ message: "No token provided" });
-  }
-
-  const token = header.split(" ")[1];
-
+const authMiddleware = (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const authHeader = req.headers.authorization;
+
+    if (
+      !authHeader ||
+      !authHeader.startsWith("Bearer ")
+    ) {
+      return res.status(401).json({
+        message: "No token provided",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const decoded = jwt.verify(
+      token,
+      JWT_SECRET
+    );
+
     req.user = decoded;
+
     next();
-  } catch {
-    res.status(401).json({ message: "Invalid token" });
+  } catch (error) {
+    console.log(
+      "TOKEN VERIFY ERROR:",
+      error.message
+    );
+
+    return res.status(401).json({
+      message: "Invalid token",
+    });
   }
-}
+};
 
 module.exports = authMiddleware;

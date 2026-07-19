@@ -2,19 +2,21 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
+const path = require("path");
 
 const pool = require("../db");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || "temporary_local_secret";
 
 // Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    cb(null, path.join(__dirname, "../../uploads"));
   },
+
   filename: (req, file, cb) => {
     cb(null, Date.now() + "-" + file.originalname);
   },
@@ -25,7 +27,16 @@ const upload = multer({ storage });
 // Register
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    let { name, email, password, role } = req.body;
+
+    name = name?.trim();
+    email = email?.trim().toLowerCase();
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "Name, email and password are required",
+      });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -46,14 +57,17 @@ router.post("/register", async (req, res) => {
       [name, email, hashedPassword, role || "candidate"]
     );
 
-    res.json({
+    res.status(201).json({
       message: "Registration successful",
       user: result.rows[0],
     });
   } catch (error) {
+    console.error("REGISTER ERROR:", error);
+
     if (error.code === "23505") {
       return res.status(400).json({
-        message: "Email already registered. Please login or use another email.",
+        message:
+          "Email already registered. Please login or use another email.",
       });
     }
 
@@ -66,26 +80,46 @@ router.post("/register", async (req, res) => {
 // Login
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+
+    email = email?.trim().toLowerCase();
+
+    console.log("Login attempt:", email);
+    console.log("Password length:", password?.length);
+
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and password are required",
+      });
+    }
 
     const result = await pool.query(
-      "SELECT * FROM users WHERE email=$1",
+      `SELECT *
+       FROM users
+       WHERE LOWER(email) = LOWER($1)`,
       [email]
     );
 
+    console.log("Users found:", result.rows.length);
+
     if (result.rows.length === 0) {
-      return res.status(400).json({
-        message: "User not found",
+      return res.status(401).json({
+        message: "Invalid Email or Password",
       });
     }
 
     const user = result.rows[0];
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
+
+    console.log("Password match:", isMatch);
 
     if (!isMatch) {
-      return res.status(400).json({
-        message: "Wrong password",
+      return res.status(401).json({
+        message: "Invalid Email or Password",
       });
     }
 
@@ -101,6 +135,7 @@ router.post("/login", async (req, res) => {
     );
 
     res.json({
+      message: "Login successful",
       token,
       user: {
         id: user.id,
@@ -116,6 +151,8 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("LOGIN ERROR:", error);
+
     res.status(500).json({
       message: error.message,
     });
@@ -150,6 +187,8 @@ router.get("/profile", authMiddleware, async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
+    console.error("PROFILE ERROR:", error);
+
     res.status(500).json({
       message: error.message,
     });
@@ -159,7 +198,8 @@ router.get("/profile", authMiddleware, async (req, res) => {
 // Update profile details
 router.put("/profile", authMiddleware, async (req, res) => {
   try {
-    const { name, phone, location, bio, company } = req.body;
+    const { name, phone, location, bio, company } =
+      req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({
@@ -202,6 +242,8 @@ router.put("/profile", authMiddleware, async (req, res) => {
       user: result.rows[0],
     });
   } catch (error) {
+    console.error("UPDATE PROFILE ERROR:", error);
+
     res.status(500).json({
       message: error.message,
     });
@@ -246,6 +288,8 @@ router.post(
         user: result.rows[0],
       });
     } catch (error) {
+      console.error("PROFILE PHOTO ERROR:", error);
+
       res.status(500).json({
         message: error.message,
       });
@@ -291,6 +335,8 @@ router.post(
         user: result.rows[0],
       });
     } catch (error) {
+      console.error("RESUME UPLOAD ERROR:", error);
+
       res.status(500).json({
         message: error.message,
       });

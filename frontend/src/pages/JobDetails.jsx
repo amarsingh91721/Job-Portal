@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../services/api";
+import { API_URL } from "../config";
 import JobCard from "../components/JobCard";
 
 function JobDetails() {
@@ -51,16 +52,26 @@ function JobDetails() {
     );
   }
 
+  const logoUrl = job?.company_logo
+  ? job.company_logo.startsWith("http")
+    ? job.company_logo
+    : `${API_URL}${job.company_logo}`
+  : null;
+
   return (
     <div className="job-details-page">
       <div className="job-details-card">
-        {job.company_logo && (
-          <img
-            src={`http://localhost:5000${job.company_logo}`}
-            alt={job.company}
-            className="job-details-logo"
-          />
-        )}
+        {logoUrl && (
+  <img
+    src={logoUrl}
+    alt={`${job.company} logo`}
+    className="job-details-logo"
+    onError={(e) => {
+      console.log("Logo failed:", logoUrl);
+      e.currentTarget.style.display = "none";
+    }}
+  />
+)}
 
         <h1>{job.title}</h1>
         <h2>{job.company}</h2>

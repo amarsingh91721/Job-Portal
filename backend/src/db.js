@@ -1,41 +1,50 @@
 const { Pool } = require("pg");
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
+const isProduction = Boolean(process.env.DATABASE_URL);
 
-pool.connect()
+const pool = new Pool(
+  isProduction
+    ? {
+        // Render + Neon
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+          rejectUnauthorized: false,
+        },
+
+        // Always use Neon public schema
+        options: "-c search_path=public",
+      }
+    : {
+        // Local Docker PostgreSQL
+        host: "localhost",
+        user: "amar",
+        password: "password",
+        database: "job_portal",
+        port: 5435,
+
+        options: "-c search_path=public",
+      }
+);
+
+pool
+  .connect()
   .then(async (client) => {
-    console.log("✅ Connected to Neon PostgreSQL");
+    console.log("✅ PostgreSQL connected successfully");
 
     const result = await client.query(`
       SELECT
         current_database() AS database_name,
         current_user AS database_user,
-        current_schema() AS schema_name;
+        current_schema() AS current_schema,
+        current_setting('search_path') AS search_path
     `);
 
-    console.log("DATABASE DETAILS:", result.rows[0]);
-
-    const tablesResult = await client.query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = 'public'
-      ORDER BY table_name;
-    `);
-
-    console.log(
-      "PUBLIC TABLES:",
-      tablesResult.rows.map((row) => row.table_name)
-    );
+    console.log("Database details:", result.rows[0]);
 
     client.release();
   })
-  .catch((err) => {
-    console.error("❌ Database connection failed:", err);
+  .catch((error) => {
+    console.error("❌ Database connection failed:", error);
   });
 
 module.exports = pool;

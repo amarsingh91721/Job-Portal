@@ -27,6 +27,11 @@ function PostJob() {
     try {
       const token = localStorage.getItem("token");
 
+      if (!token) {
+        alert("Please login again.");
+        return;
+      }
+
       if (
         !form.title ||
         !form.company ||
@@ -56,10 +61,9 @@ function PostJob() {
         formData.append("company_logo", companyLogo);
       }
 
-      await api.post("/jobs", formData, {
+     await api.post("/jobs", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
         },
       });
 
@@ -79,12 +83,12 @@ function PostJob() {
 
       setCompanyLogo(null);
     } catch (error) {
+      console.log("POST JOB ERROR:", error);
+
       alert(
         error.response?.data?.message ||
           "Failed to post job."
       );
-
-      console.log(error.response?.data);
     }
   };
 
@@ -130,18 +134,30 @@ function PostJob() {
           <option value="Software Development">
             Software Development
           </option>
-          <option value="Data Science">Data Science</option>
+          <option value="Data Science">
+            Data Science
+          </option>
           <option value="Cyber Security">
             Cyber Security
           </option>
           <option value="Cloud Computing">
             Cloud Computing
           </option>
-          <option value="DevOps">DevOps</option>
-          <option value="Design">Design</option>
-          <option value="Marketing">Marketing</option>
-          <option value="Finance">Finance</option>
-          <option value="Other">Other</option>
+          <option value="DevOps">
+            DevOps
+          </option>
+          <option value="Design">
+            Design
+          </option>
+          <option value="Marketing">
+            Marketing
+          </option>
+          <option value="Finance">
+            Finance
+          </option>
+          <option value="Other">
+            Other
+          </option>
         </select>
 
         <select
@@ -150,10 +166,18 @@ function PostJob() {
           onChange={handleChange}
         >
           <option value="">Select Job Type</option>
-          <option value="Full-time">Full-time</option>
-          <option value="Part-time">Part-time</option>
-          <option value="Internship">Internship</option>
-          <option value="Contract">Contract</option>
+          <option value="Full-time">
+            Full-time
+          </option>
+          <option value="Part-time">
+            Part-time
+          </option>
+          <option value="Internship">
+            Internship
+          </option>
+          <option value="Contract">
+            Contract
+          </option>
         </select>
 
         <select
@@ -162,9 +186,15 @@ function PostJob() {
           onChange={handleChange}
         >
           <option value="">Select Work Mode</option>
-          <option value="Remote">Remote</option>
-          <option value="Hybrid">Hybrid</option>
-          <option value="Onsite">Onsite</option>
+          <option value="Remote">
+            Remote
+          </option>
+          <option value="Hybrid">
+            Hybrid
+          </option>
+          <option value="Onsite">
+            Onsite
+          </option>
         </select>
 
         <select
@@ -172,12 +202,24 @@ function PostJob() {
           value={form.experience_level}
           onChange={handleChange}
         >
-          <option value="">Select Experience Level</option>
-          <option value="Fresher">Fresher</option>
-          <option value="0-1 Years">0-1 Years</option>
-          <option value="1-3 Years">1-3 Years</option>
-          <option value="3-5 Years">3-5 Years</option>
-          <option value="5+ Years">5+ Years</option>
+          <option value="">
+            Select Experience Level
+          </option>
+          <option value="Fresher">
+            Fresher
+          </option>
+          <option value="0-1 Years">
+            0-1 Years
+          </option>
+          <option value="1-3 Years">
+            1-3 Years
+          </option>
+          <option value="3-5 Years">
+            3-5 Years
+          </option>
+          <option value="5+ Years">
+            5+ Years
+          </option>
         </select>
 
         <textarea
@@ -194,14 +236,16 @@ function PostJob() {
           type="file"
           accept="image/*"
           onChange={(e) =>
-            setCompanyLogo(e.target.files[0])
+            setCompanyLogo(
+              e.target.files?.[0] || null
+            )
           }
         />
 
         {companyLogo && (
           <img
             src={URL.createObjectURL(companyLogo)}
-            alt="Preview"
+            alt="Company logo preview"
             style={{
               width: "80px",
               height: "80px",

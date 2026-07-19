@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 
 const authRoutes = require("./routes/authRoutes");
 const jobRoutes = require("./routes/jobRoutes");
@@ -9,7 +11,16 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use("/uploads", express.static("uploads"));
+const uploadsPath = path.join(__dirname, "../uploads");
+console.log("Uploads Path:", uploadsPath);
+console.log("Exists:", fs.existsSync(uploadsPath));
+
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+}
+
+app.use("/uploads", express.static(uploadsPath));
+
 
 app.get("/", (req, res) => {
   res.send("Job Portal Backend Running");

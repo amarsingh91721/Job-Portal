@@ -205,7 +205,7 @@ function EditJob() {
             <p>Current Logo:</p>
 
             <img
-              src={`http://localhost:5000${oldJob.company_logo}`}
+              src={`https://job-portal-backend-hnv4.onrender.com${oldJob.company_logo}`}
               alt="Company Logo"
               style={{
                 width: "80px",

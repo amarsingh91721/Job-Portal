@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
+import { API_URL } from "../config";
 
 function JobCard({ job }) {
   const storedUser = localStorage.getItem("user");
@@ -75,7 +76,6 @@ function JobCard({ job }) {
         setIsSaved(false);
         alert("Job removed from saved jobs.");
 
-        // Remove the card immediately when viewing Saved Jobs
         if (window.location.pathname === "/saved-jobs") {
           window.location.reload();
         }
@@ -117,25 +117,34 @@ function JobCard({ job }) {
     }
   };
 
+  const logoUrl = job?.company_logo
+  ? job.company_logo.startsWith("http")
+    ? job.company_logo
+    : `${API_URL}${job.company_logo}`
+  : null;
+
   return (
     <div className="job-card">
-      {job.company_logo && (
-        <img
-          src={`http://localhost:5000${job.company_logo}`}
-          alt={`${job.company} logo`}
-          style={{
-            width: "70px",
-            height: "70px",
-            objectFit: "contain",
-            border: "1px solid #ddd",
-            borderRadius: "10px",
-            padding: "5px",
-            background: "#fff",
-            marginBottom: "10px",
-          }}
-        />
-      )}
-
+      {logoUrl && (
+  <img
+    src={logoUrl}
+    alt={`${job.company} logo`}
+    onError={(e) => {
+      console.log("Logo failed to load:", logoUrl);
+      e.currentTarget.style.display = "none";
+    }}
+    style={{
+      width: "100px",
+      height: "100px",
+      objectFit: "contain",
+      border: "1px solid #ddd",
+      borderRadius: "12px",
+      padding: "6px",
+      background: "#fff",
+      marginBottom: "20px",
+    }}
+  />
+)}
       <h2>{job.title}</h2>
 
       <p>

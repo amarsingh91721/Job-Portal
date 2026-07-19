@@ -75,7 +75,7 @@ function Applicants() {
 <td>
   {applicant.resume ? (
     <a
-      href={`http://localhost:5000/${applicant.resume}`}
+      href={`hhttps://job-portal-backend-hnv4.onrender.com/${applicant.resume}`}
       target="_blank"
       rel="noreferrer"
     >

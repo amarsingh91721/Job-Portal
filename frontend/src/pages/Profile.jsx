@@ -273,7 +273,7 @@ function Profile() {
 
                 {profile.resume ? (
                   <a
-                    href={`http://localhost:5000${profile.resume}`}
+                    href={`https://job-portal-backend-hnv4.onrender.com${profile.resume}`}
                     target="_blank"
                     rel="noreferrer"
                   >

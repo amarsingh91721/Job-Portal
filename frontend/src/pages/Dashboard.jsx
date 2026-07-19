@@ -116,7 +116,7 @@ function Dashboard() {
       ? filePath
       : `/${filePath}`;
 
-    return `http://localhost:5000${normalizedPath}`;
+    return `https://job-portal-backend-hnv4.onrender.com${normalizedPath}`;
   };
 
   const getStatusClass = (status) => {
