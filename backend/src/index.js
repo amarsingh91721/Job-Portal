@@ -1,3 +1,5 @@
+
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
@@ -31,6 +33,24 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 const PORT = process.env.PORT || 5000;
+
+const transporter = require("./config/mail");
+
+app.get("/test-mail", async (req, res) => {
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER,
+      subject: "Job Portal Test Email",
+      text: "Email setup is working successfully!",
+    });
+
+    res.send("Email sent successfully");
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Email failed");
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

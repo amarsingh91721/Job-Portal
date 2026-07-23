@@ -11,6 +11,12 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || "temporary_local_secret";
 
+const { OAuth2Client } = require("google-auth-library");
+
+const client = new OAuth2Client(
+  "811985715513-4tjkos96e76he9e1udcm2dnlauslho05.apps.googleusercontent.com"
+);
+
 // Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -158,6 +164,132 @@ router.post("/login", async (req, res) => {
     });
   }
 });
+
+// Google Login
+router.post("/google", async (req, res) => {
+  try {
+
+    const { token } = req.body;
+
+    console.log("Google login request received. Has token:", !!token);
+
+    if (!token) {
+      return res.status(400).json({ message: "Missing Google token in request body" });
+    }
+
+
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience:
+        "811985715513-4tjkos96e76he9e1udcm2dnlauslho05.apps.googleusercontent.com",
+    });
+
+
+    const payload = ticket.getPayload();
+
+
+    const {
+      email,
+      name,
+      picture
+    } = payload;
+
+
+    console.log("Google User:", payload);
+
+
+    // Check existing user
+
+    let result = await pool.query(
+      `SELECT *
+       FROM users
+       WHERE LOWER(email)=LOWER($1)`,
+      [email]
+    );
+
+
+    let user;
+
+
+    if(result.rows.length === 0){
+
+      // Create new user
+
+      const newUser = await pool.query(
+        `INSERT INTO users
+        (
+          name,
+          email,
+          role,
+          profile_photo
+        )
+        VALUES($1,$2,$3,$4)
+        RETURNING *`,
+        [
+          name,
+          email,
+          "candidate",
+          picture
+        ]
+      );
+
+
+      user = newUser.rows[0];
+
+
+    }
+    else{
+
+      user = result.rows[0];
+
+    }
+
+
+
+    // Create your JWT token
+
+    const jwtToken = jwt.sign(
+      {
+        id:user.id,
+        role:user.role
+      },
+      JWT_SECRET,
+      {
+        expiresIn:"1d"
+      }
+    );
+
+
+    res.json({
+
+      message:"Google Login Successful",
+
+      token:jwtToken,
+
+      user:{
+        id:user.id,
+        name:user.name,
+        email:user.email,
+        role:user.role,
+        profile_photo:user.profile_photo
+      }
+
+    });
+
+
+  } catch(error){
+
+    console.error("GOOGLE LOGIN ERROR:", error);
+
+    res.status(500).json({
+      message: "Google authentication failed",
+      error: error.message,
+    });
+
+  }
+
+});
+
 
 // Get logged-in user profile
 router.get("/profile", authMiddleware, async (req, res) => {

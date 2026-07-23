@@ -1,6 +1,6 @@
 const { Pool } = require("pg");
 
-const isProduction = Boolean(process.env.DATABASE_URL);
+const isProduction = process.env.NODE_ENV === "production";
 
 const pool = new Pool(
   isProduction
